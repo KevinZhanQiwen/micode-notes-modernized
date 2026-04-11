@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application
+        android:icon="@drawable/icon_app"
+        android:label="@string/app_name" >
+        <activity
+            android:name=".ui.NotesListActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTop"
+            android:theme="@style/NoteTheme"
+            android:uiOptions="splitActionBarWhenNarrow"
+            android:windowSoftInputMode="adjustPan" >
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.NoteEditActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/NoteTheme" >
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/text_note" />
+                <data android:mimeType="vnd.android.cursor.item/call_note" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.INSERT_OR_EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="vnd.android.cursor.item/text_note" />
+                <data android:mimeType="vnd.android.cursor.item/call_note" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.searchable"
+                android:resource="@xml/searchable" />
+        </activity>
+
+        <provider
+            android:name="net.micode.notes.data.NotesProvider"
+            android:authorities="micode_notes"
+            android:multiprocess="true" />
+
+        <receiver
+            android:name=".widget.NoteWidgetProvider_2x"
+            android:exported="true"
+            android:label="@string/app_widget2x2" >
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.appwidget.action.APPWIDGET_DELETED" />
+                <action android:name="android.intent.action.PRIVACY_MODE_CHANGED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_2x_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.NoteWidgetProvider_4x"
+            android:exported="true"
+            android:label="@string/app_widget4x4" >
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.appwidget.action.APPWIDGET_DELETED" />
+                <action android:name="android.intent.action.PRIVACY_MODE_CHANGED" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_4x_info" />
+        </receiver>
+
+        <receiver android:name=".ui.AlarmInitReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="net.micode.notes.ui.AlarmReceiver"
+            android:process=":remote" >
+        </receiver>
+
+        <activity
+            android:name=".ui.AlarmAlertActivity"
+            android:label="@string/app_name"
+            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.Holo.Wallpaper.NoTitleBar" >
+        </activity>
+
+        <activity
+            android:name="net.micode.notes.ui.NotesPreferenceActivity"
+            android:label="@string/preferences_title"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Holo.Light" >
+        </activity>
+
+        <service
+            android:name="net.micode.notes.gtask.remote.GTaskSyncService"
+            android:exported="false" >
+        </service>
+
+        <meta-data
+            android:name="android.app.default_searchable"
+            android:value=".ui.NoteEditActivity" />
+    </application>
+
+</manifest>
