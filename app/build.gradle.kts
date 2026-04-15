@@ -14,7 +14,7 @@ android {
     defaultConfig {
         applicationId = "net.micode.notes"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 3
         versionCode = 1
         versionName = "1.0"
 
