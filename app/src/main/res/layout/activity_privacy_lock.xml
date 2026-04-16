@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FF1A1A1A"
+    android:gravity="center_horizontal">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tv_lock_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="60dp"
+        android:text="@string/privacy_space_title"
+        android:textColor="#FFFFFFFF"
+        android:textSize="22sp" />
+
+    <!-- Hint message (e.g. "Draw your pattern") -->
+    <TextView
+        android:id="@+id/tv_lock_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="#FFAAAAAA"
+        android:textSize="14sp" />
+
+    <!-- Pattern lock view (shown when auth type = pattern) -->
+    <net.micode.notes.ui.PatternLockView
+        android:id="@+id/pattern_lock_view"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
+        android:layout_marginTop="40dp"
+        android:visibility="gone" />
+
+    <!-- PIN container (shown when auth type = pin) -->
+    <LinearLayout
+        android:id="@+id/ll_pin_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_marginTop="40dp"
+        android:visibility="gone">
+
+        <!-- PIN dots indicator -->
+        <LinearLayout
+            android:id="@+id/ll_pin_dots"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="32dp" />
+
+        <!-- Number pad -->
+        <include layout="@layout/view_number_pad" />
+    </LinearLayout>
+
+</LinearLayout>

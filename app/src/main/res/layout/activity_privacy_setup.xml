@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF1A1A1A">
+
+    <!-- Step 1: choose auth type -->
+    <LinearLayout
+        android:id="@+id/ll_step_choose"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:text="@string/privacy_setup_title"
+            android:textColor="#FFFFFFFF"
+            android:textSize="24sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/privacy_setup_subtitle"
+            android:textColor="#FFAAAAAA"
+            android:textSize="14sp"
+            android:gravity="center" />
+
+        <Button
+            android:id="@+id/btn_choose_pattern"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="60dp"
+            android:text="@string/privacy_setup_use_pattern"
+            android:textSize="16sp"
+            android:background="#FF4A90D9"
+            android:textColor="#FFFFFFFF" />
+
+        <Button
+            android:id="@+id/btn_choose_pin"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
+            android:text="@string/privacy_setup_use_pin"
+            android:textSize="16sp"
+            android:background="#FF333333"
+            android:textColor="#FFFFFFFF" />
+    </LinearLayout>
+
+    <!-- Step 2a: pattern setup -->
+    <LinearLayout
+        android:id="@+id/ll_step_pattern"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_pattern_setup_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:text="@string/privacy_setup_draw_pattern"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/tv_pattern_setup_sub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#FFAAAAAA"
+            android:textSize="13sp" />
+
+        <net.micode.notes.ui.PatternLockView
+            android:id="@+id/pattern_setup_view"
+            android:layout_width="280dp"
+            android:layout_height="280dp"
+            android:layout_marginTop="32dp" />
+    </LinearLayout>
+
+    <!-- Step 2b: PIN setup -->
+    <LinearLayout
+        android:id="@+id/ll_step_pin"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_pin_setup_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="40dp"
+            android:text="@string/privacy_setup_enter_pin"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/tv_pin_setup_sub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#FFAAAAAA"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:id="@+id/ll_pin_dots_setup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="24dp" />
+
+        <include layout="@layout/view_number_pad" />
+    </LinearLayout>
+
+</FrameLayout>
