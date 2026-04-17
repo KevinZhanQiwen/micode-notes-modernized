@@ -1,52 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@android:color/background_light">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="@drawable/list_privacy_background">
 
-    <!-- Title bar (mimics the sub-folder bar in NotesListActivity) -->
-    <TextView
-        android:id="@+id/tv_privacy_title"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:text="@string/privacy_space_title"
-        android:textColor="#FF333333"
-        android:textSize="18sp"
-        android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:background="#FFF5F5F5" />
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:orientation="vertical">
 
-    <!-- Empty state hint -->
-    <TextView
-        android:id="@+id/tv_empty_hint"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:text="@string/privacy_space_empty"
-        android:textColor="#FFAAAAAA"
-        android:textSize="14sp"
-        android:gravity="center"
-        android:visibility="gone" />
+        <!-- Empty state hint -->
+        <TextView
+            android:id="@+id/tv_empty_hint"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text="@string/privacy_space_empty"
+            android:textColor="#FFAAAAAA"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:visibility="gone" />
 
-    <!-- Notes list -->
-    <ListView
-        android:id="@+id/private_notes_list"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:divider="@null"
-        android:listSelector="@android:color/transparent" />
+        <!-- Notes list -->
+        <ListView
+            android:id="@+id/private_notes_list"
+            android:layout_width="fill_parent"
+            android:layout_height="0dip"
+            android:layout_weight="1"
+            android:cacheColorHint="@null"
+            android:listSelector="@android:color/transparent"
+            android:divider="@null"
+            android:fadingEdge="@null" />
 
-    <!-- Bottom: New note button -->
+    </LinearLayout>
+
+    <!-- Floating new note button -->
     <Button
         android:id="@+id/btn_new_private_note"
+        android:background="@drawable/new_note_privacy"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:text="@string/privacy_new_note"
-        android:textSize="16sp"
-        android:background="#FF4A90D9"
-        android:textColor="#FFFFFFFF" />
+        android:layout_height="wrap_content"
+        android:focusable="false"
+        android:layout_gravity="bottom" />
 
-</LinearLayout>
+</FrameLayout>
