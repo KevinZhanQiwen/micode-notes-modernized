@@ -58,6 +58,16 @@
         <item name="android:textColor">@color/secondary_text_dark</item>
     </style>
 
+    <style name="PinButton" parent="@android:style/Widget.Button">
+        <item name="android:background">#FF2A2A2A</item>
+        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:layout_margin">2dp</item>
+    </style>
+
+    <style name="PrivacyTheme" parent="@android:style/Theme.Holo">
+        <item name="android:windowBackground">#FF1A1A1A</item>
+    </style>
+
     <style name="NoteTheme" parent="@android:style/Theme.Holo.Light">
         <item name="android:actionBarStyle">@style/NoteActionBarStyle</item>
     </style>

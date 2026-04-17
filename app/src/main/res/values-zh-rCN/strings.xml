@@ -110,6 +110,32 @@
     <string name="preferences_toast_cannot_change_account">正在同步中，不能修改同步帐号</string>
     <string name="preferences_toast_success_set_accout">同步帐号已设置为%1$s</string>
     <string name="preferences_bg_random_appear_title">新建便签背景颜色随机</string>
+    <!-- 隐私空间 -->
+    <string name="menu_privacy_space">隐私空间</string>
+    <string name="privacy_space_title">隐私空间</string>
+    <string name="privacy_space_empty">暂无私密便签</string>
+    <string name="privacy_new_note">新建私密便签</string>
+    <string name="privacy_setup_title">设置隐私空间</string>
+    <string name="privacy_setup_subtitle">选择解锁方式来保护你的私密便签</string>
+    <string name="privacy_setup_use_pattern">使用手势解锁</string>
+    <string name="privacy_setup_use_pin">使用四位数字密码</string>
+    <string name="privacy_setup_draw_pattern">绘制手势密码</string>
+    <string name="privacy_setup_draw_pattern_again">再次绘制以确认</string>
+    <string name="privacy_setup_enter_pin">输入四位数字密码</string>
+    <string name="privacy_setup_enter_pin_again">再次输入以确认</string>
+    <string name="privacy_setup_pattern_mismatch">两次手势不一致，请重新绘制</string>
+    <string name="privacy_setup_pin_mismatch">两次密码不一致，请重新输入</string>
+    <string name="privacy_setup_pattern_too_short">手势至少需要连接 4 个点</string>
+    <string name="privacy_setup_success">隐私空间设置成功</string>
+    <string name="privacy_lock_draw_pattern">请绘制手势密码</string>
+    <string name="privacy_lock_enter_pin">请输入数字密码</string>
+    <string name="privacy_lock_wrong_pattern">手势错误，请重试</string>
+    <string name="privacy_lock_wrong_pin">密码错误，请重试</string>
+    <string name="privacy_move_in">移入隐私空间</string>
+    <string name="privacy_move_out">恢复到普通便签</string>
+    <string name="privacy_move_in_done">已移入隐私空间</string>
+    <string name="privacy_move_out_done">已恢复到普通便签</string>
+
     <string name="button_delete">删除</string>
     <string name="call_record_folder_name">通话便签</string>
     <string name="hint_foler_name">请输入名称</string>
