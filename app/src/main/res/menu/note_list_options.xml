@@ -28,4 +28,8 @@
         android:title="@string/menu_delete"
         android:icon="@drawable/menu_delete"
         android:showAsAction="always|withText" />
+    <item
+        android:id="@+id/move_to_privacy"
+        android:title="@string/privacy_move_in"
+        android:showAsAction="never" />
 </menu>
