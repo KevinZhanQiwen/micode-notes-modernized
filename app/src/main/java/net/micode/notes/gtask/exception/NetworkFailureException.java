@@ -16,6 +16,26 @@
 
 package net.micode.notes.gtask.exception;
 
+/**
+ * 网络失败异常（受检异常）
+ *
+ * 继承 Exception，属于受检异常（Checked Exception）
+ * 调用方必须显式捕获或声明抛出
+ *
+ * 使用场景：
+ * - 无网络连接
+ * - HTTP 请求超时
+ * - 服务器返回错误状态码
+ * - 网络 I/O 异常
+ *
+ * 设计意图：
+ * 网络问题通常是可恢复的（如重试、提示用户检查网络），
+ * 因此强制调用方处理此类异常，避免静默失败
+ *
+ * 与 ActionFailureException 的区别：
+ * - ActionFailureException：逻辑错误，不可恢复，非受检
+ * - NetworkFailureException：网络问题，可恢复，受检
+ */
 public class NetworkFailureException extends Exception {
     private static final long serialVersionUID = 2107610287180234136L;
 
