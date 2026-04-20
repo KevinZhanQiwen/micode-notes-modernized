@@ -35,10 +35,18 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.view.ActionMode;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Display;
+import android.view.GestureDetector;
+import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -55,6 +63,9 @@ import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -76,7 +87,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 public class NotesListActivity extends Activity implements OnClickListener, OnItemLongClickListener {
     private static final int FOLDER_NOTE_LIST_QUERY_TOKEN = 0;
@@ -125,6 +138,23 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
 
     private NoteItemData mFocusNoteDataItem;
 
+    // Color filter: -1 = all, 0-4 = specific bg_color_id
+    private static final int COLOR_FILTER_ALL = -1;
+    private int mColorFilter = COLOR_FILTER_ALL;
+    private View mColorFilterBar;
+    private boolean mColorBarVisible = false;
+    private float mSwipeStartY = 0f;
+    private final List<View> mColorChips = new ArrayList<>();
+
+    // Approximate chip fill colors to match note tile backgrounds
+    private static final int[] NOTE_CHIP_COLORS = {
+        0xFFF5C518, // YELLOW (0)
+        0xFF5588BB, // BLUE   (1)
+        0xFFF0F0F0, // WHITE  (2)
+        0xFF7EC850, // GREEN  (3)
+        0xFFE55B5B  // RED    (4)
+    };
+
     private static final String NORMAL_SELECTION =
             NoteColumns.PARENT_ID + "=? AND " + NoteColumns.IS_PRIVATE + "=0";
 
@@ -134,16 +164,34 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
             + NoteColumns.ID + "=" + Notes.ID_CALL_RECORD_FOLDER + " AND "
             + NoteColumns.NOTES_COUNT + ">0)";
 
+    // Used when a colour filter is active (hides folders and call-record row)
+    private static final String COLOR_FILTER_SELECTION =
+            NoteColumns.TYPE + "=" + Notes.TYPE_NOTE
+            + " AND " + NoteColumns.PARENT_ID + "=?"
+            + " AND " + NoteColumns.IS_PRIVATE + "=0"
+            + " AND " + NoteColumns.BG_COLOR_ID + "=?";
+
     private final static int REQUEST_CODE_OPEN_NODE       = 102;
     private final static int REQUEST_CODE_NEW_NODE        = 103;
     private final static int REQUEST_CODE_PRIVACY_SETUP   = 104;
     private final static int REQUEST_CODE_PRIVACY_UNLOCK  = 105;
+    private final static int REQUEST_CODE_PICK_BG_IMAGE   = 106;
+
+    // List background preferences
+    private static final String PREF_LIST_BG_TYPE  = "pref_list_bg_type";
+    private static final String PREF_LIST_BG_VALUE = "pref_list_bg_value";
+    private static final String BG_TYPE_DEFAULT = "default";
+    private static final String BG_TYPE_COLOR   = "color";
+    private static final String BG_TYPE_IMAGE   = "image";
+
+    private View mListRoot;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.note_list);
         initResources();
+        applyListBackground();
 
         /**
          * Insert an introduction when user firstly use this application
@@ -162,8 +210,38 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         } else if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_PRIVACY_UNLOCK) {
             // Unlocked – open the space
             startActivity(new Intent(this, PrivacySpaceActivity.class));
+        } else if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_PICK_BG_IMAGE
+                && data != null && data.getData() != null) {
+            handlePickedBackgroundImage(data);
         } else {
             super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    private void handlePickedBackgroundImage(Intent data) {
+        Uri uri = data.getData();
+        // Try to acquire long-term permission for SAF URIs so the background
+        // survives reboots and process restarts.
+        try {
+            int flags = data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            if (flags == 0) {
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            }
+            getContentResolver().takePersistableUriPermission(uri, flags);
+        } catch (SecurityException ignored) {
+            // Some pickers (e.g. classic ACTION_PICK) don't grant persistable perms.
+        }
+
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putString(PREF_LIST_BG_TYPE, BG_TYPE_IMAGE)
+                .putString(PREF_LIST_BG_VALUE, uri.toString())
+                .apply();
+
+        if (applyListBackground()) {
+            Toast.makeText(this, R.string.bg_applied, Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, R.string.bg_apply_failed, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -223,6 +301,7 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         mContentResolver = this.getContentResolver();
         mBackgroundQueryHandler = new BackgroundQueryHandler(this.getContentResolver());
         mCurrentFolderId = Notes.ID_ROOT_FOLDER;
+        mListRoot = findViewById(R.id.list_root);
         mNotesListView = (ListView) findViewById(R.id.notes_list);
         mNotesListView.addFooterView(LayoutInflater.from(this).inflate(R.layout.note_list_footer, null),
                 null, false);
@@ -239,6 +318,155 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         mTitleBar = (TextView) findViewById(R.id.tv_title_bar);
         mState = ListEditState.NOTE_LIST;
         mModeCallBack = new ModeCallback();
+        setupColorFilterBar();
+    }
+
+    private void setupColorFilterBar() {
+        mColorFilterBar = findViewById(R.id.hsv_color_filter);
+        LinearLayout container = (LinearLayout)
+                ((HorizontalScrollView) mColorFilterBar).getChildAt(0);
+
+        // "全部" chip — always index 0 in mColorChips, tagged -1
+        addColorChip(container, COLOR_FILTER_ALL, 0xFFBBBBBB, getString(R.string.color_filter_all));
+        for (int i = 0; i < NOTE_CHIP_COLORS.length; i++) {
+            addColorChip(container, i, NOTE_CHIP_COLORS[i], null);
+        }
+        refreshChipStates();
+
+        // Hidden above the top edge by default
+        mColorFilterBar.setVisibility(View.GONE);
+        mColorFilterBar.setAlpha(0f);
+        mColorFilterBar.setTranslationY(-dpToPx(52));
+        mColorBarVisible = false;
+
+        // Detect swipe direction directly on the list — works even when list is short
+        mNotesListView.setOnTouchListener((v, event) -> {
+            if (mState != ListEditState.NOTE_LIST) return false;
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    mSwipeStartY = event.getY();
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    float dy = event.getY() - mSwipeStartY;
+                    if (dy > dpToPx(40) && !mColorBarVisible) {
+                        showColorFilterBar();
+                    } else if (dy < -dpToPx(30) && mColorBarVisible) {
+                        hideColorFilterBar();
+                    }
+                    break;
+            }
+            return false; // let ListView handle clicks / scrolling normally
+        });
+    }
+
+    private void showColorFilterBar() {
+        if (mColorBarVisible) return;
+        mColorBarVisible = true;
+        mColorFilterBar.setTranslationY(-dpToPx(52));
+        mColorFilterBar.setAlpha(0f);
+        mColorFilterBar.setVisibility(View.VISIBLE);
+        mColorFilterBar.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(220)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator())
+                .start();
+    }
+
+    private void hideColorFilterBar() {
+        if (!mColorBarVisible) return;
+        mColorBarVisible = false;
+        mColorFilterBar.animate()
+                .translationY(-dpToPx(52))
+                .alpha(0f)
+                .setDuration(180)
+                .setInterpolator(new android.view.animation.AccelerateInterpolator())
+                .withEndAction(() -> {
+                    mColorFilterBar.setVisibility(View.GONE);
+                    mColorFilterBar.setTranslationY(-dpToPx(52));
+                })
+                .start();
+    }
+
+    private void addColorChip(LinearLayout parent, final int colorId,
+                               int fillColor, String label) {
+        // chip (44dp) > ring (40dp, oval outline, shown when selected) > dot (28dp, solid fill)
+        int chipSz = dpToPx(44);
+        int ringSz = dpToPx(40);
+        int dotSz  = dpToPx(28);
+        int margin = dpToPx(3);
+
+        FrameLayout chip = new FrameLayout(this);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(chipSz, chipSz);
+        lp.setMargins(margin, 0, margin, 0);
+        chip.setLayoutParams(lp);
+
+        // Selection ring — independent oval view so its outline is never clipped by a rect
+        View ring = new View(this);
+        GradientDrawable ringShape = new GradientDrawable();
+        ringShape.setShape(GradientDrawable.OVAL);
+        ringShape.setColor(Color.TRANSPARENT);
+        ringShape.setStroke(dpToPx(3), Color.WHITE);
+        ring.setBackground(ringShape);
+        ring.setVisibility(View.INVISIBLE);
+        FrameLayout.LayoutParams ringLp = new FrameLayout.LayoutParams(ringSz, ringSz);
+        ringLp.gravity = Gravity.CENTER;
+        ring.setLayoutParams(ringLp);
+        chip.addView(ring);
+
+        // Coloured dot
+        View dot = new View(this);
+        GradientDrawable dotShape = new GradientDrawable();
+        dotShape.setShape(GradientDrawable.OVAL);
+        dotShape.setColor(fillColor);
+        if (fillColor == 0xFFF0F0F0) {
+            dotShape.setStroke(dpToPx(1), 0xFFCCCCCC);
+        }
+        dot.setBackground(dotShape);
+        FrameLayout.LayoutParams dotLp = new FrameLayout.LayoutParams(dotSz, dotSz);
+        dotLp.gravity = Gravity.CENTER;
+        dot.setLayoutParams(dotLp);
+        chip.addView(dot);
+
+        // Label ("全部")
+        if (label != null && !label.isEmpty()) {
+            TextView tv = new TextView(this);
+            tv.setText(label);
+            tv.setTextColor(0xFF444444);
+            tv.setTextSize(9);
+            tv.setGravity(Gravity.CENTER);
+            FrameLayout.LayoutParams tvLp = new FrameLayout.LayoutParams(dotSz, dotSz);
+            tvLp.gravity = Gravity.CENTER;
+            tv.setLayoutParams(tvLp);
+            chip.addView(tv);
+        }
+
+        chip.setTag(colorId);
+        chip.setOnClickListener(v -> {
+            int id = (int) chip.getTag();
+            mColorFilter = (mColorFilter == id) ? COLOR_FILTER_ALL : id;
+            refreshChipStates();
+            startAsyncNotesListQuery();
+        });
+
+        parent.addView(chip);
+        mColorChips.add(chip);
+    }
+
+    private void refreshChipStates() {
+        for (View chip : mColorChips) {
+            int id = (int) chip.getTag();
+            boolean selected = (id == mColorFilter)
+                    || (mColorFilter == COLOR_FILTER_ALL && id == COLOR_FILTER_ALL);
+            // ring is always childAt(0)
+            View ring = ((FrameLayout) chip).getChildAt(0);
+            ring.setVisibility(selected ? View.VISIBLE : View.INVISIBLE);
+        }
+    }
+
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
     }
 
     private class ModeCallback implements ListView.MultiChoiceModeListener, OnMenuItemClickListener {
@@ -431,12 +659,22 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
     };
 
     private void startAsyncNotesListQuery() {
-        String selection = (mCurrentFolderId == Notes.ID_ROOT_FOLDER) ? ROOT_FOLDER_SELECTION
-                : NORMAL_SELECTION;
+        String selection;
+        String[] args;
+        if (mColorFilter != COLOR_FILTER_ALL && mState == ListEditState.NOTE_LIST) {
+            selection = COLOR_FILTER_SELECTION;
+            args = new String[]{
+                String.valueOf(Notes.ID_ROOT_FOLDER),
+                String.valueOf(mColorFilter)
+            };
+        } else {
+            selection = (mCurrentFolderId == Notes.ID_ROOT_FOLDER)
+                    ? ROOT_FOLDER_SELECTION : NORMAL_SELECTION;
+            args = new String[]{String.valueOf(mCurrentFolderId)};
+        }
         mBackgroundQueryHandler.startQuery(FOLDER_NOTE_LIST_QUERY_TOKEN, null,
-                Notes.CONTENT_NOTE_URI, NoteItemData.PROJECTION, selection, new String[] {
-                    String.valueOf(mCurrentFolderId)
-                }, NoteColumns.TYPE + " DESC," + NoteColumns.MODIFIED_DATE + " DESC");
+                Notes.CONTENT_NOTE_URI, NoteItemData.PROJECTION, selection, args,
+                NoteColumns.TYPE + " DESC," + NoteColumns.MODIFIED_DATE + " DESC");
     }
 
     private final class BackgroundQueryHandler extends AsyncQueryHandler {
@@ -564,6 +802,13 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
 
     private void openFolder(NoteItemData data) {
         mCurrentFolderId = data.getId();
+        // Reset color filter and hide bar immediately when entering any subfolder
+        mColorFilter = COLOR_FILTER_ALL;
+        mColorFilterBar.animate().cancel();
+        mColorFilterBar.setVisibility(View.GONE);
+        mColorFilterBar.setAlpha(0f);
+        mColorFilterBar.setTranslationY(0f);
+        mColorBarVisible = false;
         startAsyncNotesListQuery();
         if (data.getId() == Notes.ID_CALL_RECORD_FOLDER) {
             mState = ListEditState.CALL_RECORD_FOLDER;
@@ -821,8 +1066,165 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
             onSearchRequested();
         } else if (itemId == R.id.menu_privacy_space) {
             openPrivacySpace();
+        } else if (itemId == R.id.menu_change_bg) {
+            showChangeBackgroundDialog();
         }
         return true;
+    }
+
+    /**
+     * Shows a chooser that lets the user switch the notes list background.
+     * Options: default drawable, a few built-in solid colors, or an image
+     * picked from the gallery. The choice is persisted in SharedPreferences.
+     */
+    private void showChangeBackgroundDialog() {
+        final String[] items = new String[] {
+                getString(R.string.bg_default),
+                getString(R.string.bg_blue),
+                getString(R.string.bg_green),
+                getString(R.string.bg_beige),
+                getString(R.string.bg_pink),
+                getString(R.string.bg_pick_image),
+        };
+        // Index aligned with `items`; null entries are not color presets.
+        final String[] colorValues = {
+                null,
+                "#FFE3F2FD",
+                "#FFE8F5E9",
+                "#FFFFF8E1",
+                "#FFFCE4EC",
+                null,
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.bg_dialog_title)
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 0) {
+                            PreferenceManager.getDefaultSharedPreferences(NotesListActivity.this)
+                                    .edit()
+                                    .putString(PREF_LIST_BG_TYPE, BG_TYPE_DEFAULT)
+                                    .remove(PREF_LIST_BG_VALUE)
+                                    .apply();
+                            applyListBackground();
+                            Toast.makeText(NotesListActivity.this, R.string.bg_applied,
+                                    Toast.LENGTH_SHORT).show();
+                        } else if (which == items.length - 1) {
+                            pickBackgroundImage();
+                        } else {
+                            PreferenceManager.getDefaultSharedPreferences(NotesListActivity.this)
+                                    .edit()
+                                    .putString(PREF_LIST_BG_TYPE, BG_TYPE_COLOR)
+                                    .putString(PREF_LIST_BG_VALUE, colorValues[which])
+                                    .apply();
+                            applyListBackground();
+                            Toast.makeText(NotesListActivity.this, R.string.bg_applied,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void pickBackgroundImage() {
+        // ACTION_OPEN_DOCUMENT lets us request a persistable URI permission so
+        // the chosen wallpaper survives across launches.
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_CODE_PICK_BG_IMAGE);
+        } catch (Exception e) {
+            // Fall back to the legacy gallery picker if SAF isn't available.
+            try {
+                Intent fallback = new Intent(Intent.ACTION_PICK,
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(fallback, REQUEST_CODE_PICK_BG_IMAGE);
+            } catch (Exception ex) {
+                Toast.makeText(this, R.string.bg_pick_failed, Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Applies the persisted background choice to the root view.
+     * Returns true on success, false if the saved value couldn't be applied
+     * (in which case we fall back to the default drawable).
+     */
+    private boolean applyListBackground() {
+        if (mListRoot == null) {
+            mListRoot = findViewById(R.id.list_root);
+        }
+        if (mListRoot == null) {
+            return false;
+        }
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        String type = sp.getString(PREF_LIST_BG_TYPE, BG_TYPE_DEFAULT);
+        String value = sp.getString(PREF_LIST_BG_VALUE, "");
+
+        try {
+            if (BG_TYPE_COLOR.equals(type) && !TextUtils.isEmpty(value)) {
+                mListRoot.setBackgroundColor(Color.parseColor(value));
+                return true;
+            }
+            if (BG_TYPE_IMAGE.equals(type) && !TextUtils.isEmpty(value)) {
+                Bitmap bmp = decodeScaledBitmap(Uri.parse(value));
+                if (bmp != null) {
+                    BitmapDrawable bd = new BitmapDrawable(getResources(), bmp);
+                    // CENTER_CROP-like behaviour: stretch to fill while keeping aspect.
+                    bd.setGravity(Gravity.FILL);
+                    mListRoot.setBackground(bd);
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "applyListBackground failed", e);
+        }
+        // Default / fallback path.
+        mListRoot.setBackgroundResource(R.drawable.list_background);
+        return BG_TYPE_DEFAULT.equals(type);
+    }
+
+    /**
+     * Decode the picked image with sub-sampling so we don't blow up memory on
+     * large photos (the list view can be reused as a giant wallpaper canvas).
+     */
+    private Bitmap decodeScaledBitmap(Uri uri) {
+        InputStream in = null;
+        InputStream in2 = null;
+        try {
+            // First pass: bounds only
+            in = getContentResolver().openInputStream(uri);
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(in, null, bounds);
+            if (in != null) in.close();
+
+            int targetW = getResources().getDisplayMetrics().widthPixels;
+            int targetH = getResources().getDisplayMetrics().heightPixels;
+            int sample = 1;
+            while ((bounds.outWidth / sample) > targetW * 2
+                    && (bounds.outHeight / sample) > targetH * 2) {
+                sample *= 2;
+            }
+
+            // Second pass: actual decode
+            in2 = getContentResolver().openInputStream(uri);
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = sample;
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeStream(in2, null, opts);
+        } catch (Exception e) {
+            Log.e(TAG, "decodeScaledBitmap failed: " + e.getMessage());
+            return null;
+        } finally {
+            try { if (in != null) in.close(); } catch (IOException ignored) {}
+            try { if (in2 != null) in2.close(); } catch (IOException ignored) {}
+        }
     }
 
     private void openPrivacySpace() {

@@ -17,6 +17,7 @@
 
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/list_root"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:background="@drawable/list_background">
@@ -36,6 +37,23 @@
             android:singleLine="true"
             android:textColor="#FFEAD1AE"
             android:textSize="@dimen/text_font_size_medium" />
+
+        <!-- Color filter bar: visible only in root NOTE_LIST state -->
+        <HorizontalScrollView
+            android:id="@+id/hsv_color_filter"
+            android:layout_width="fill_parent"
+            android:layout_height="52dp"
+            android:scrollbars="none"
+            android:background="#22000000">
+            <LinearLayout
+                android:id="@+id/ll_color_chips"
+                android:layout_width="wrap_content"
+                android:layout_height="fill_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingLeft="8dp"
+                android:paddingRight="8dp" />
+        </HorizontalScrollView>
 
         <ListView
             android:id="@+id/notes_list"

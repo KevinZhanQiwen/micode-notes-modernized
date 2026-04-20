@@ -39,4 +39,7 @@
     <item
         android:id="@+id/menu_privacy_space"
         android:title="@string/menu_privacy_space"/>
+    <item
+        android:id="@+id/menu_change_bg"
+        android:title="@string/menu_change_bg"/>
 </menu>

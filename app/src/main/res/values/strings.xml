@@ -152,6 +152,22 @@
     <string name="search">Notes</string>
     <string name="datetime_dialog_ok">set</string>
     <string name="datetime_dialog_cancel">cancel</string>
+    <!-- Color filter bar -->
+    <string name="color_filter_all">All</string>
+
+    <!-- Change list background -->
+    <string name="menu_change_bg">Change list background</string>
+    <string name="bg_dialog_title">Pick a background</string>
+    <string name="bg_default">Default</string>
+    <string name="bg_blue">Light blue</string>
+    <string name="bg_green">Light green</string>
+    <string name="bg_beige">Beige</string>
+    <string name="bg_pink">Light pink</string>
+    <string name="bg_pick_image">Pick from gallery…</string>
+    <string name="bg_pick_failed">No app available to pick an image</string>
+    <string name="bg_apply_failed">Failed to apply background image</string>
+    <string name="bg_applied">Background updated</string>
+
     <plurals name="search_results_title">
          <item quantity="one"><xliff:g id="number" example="1">%1$s</xliff:g> result for \"<xliff:g id="search" example="???">%2$s</xliff:g>\"</item>
         <!-- Case of 0 or 2 or more results. -->
