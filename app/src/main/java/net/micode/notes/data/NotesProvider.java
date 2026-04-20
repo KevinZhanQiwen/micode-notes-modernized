@@ -73,11 +73,19 @@ public class NotesProvider extends ContentProvider {
         + "'" + Intent.ACTION_VIEW + "' AS " + SearchManager.SUGGEST_COLUMN_INTENT_ACTION + ","
         + "'" + Notes.TextNote.CONTENT_TYPE + "' AS " + SearchManager.SUGGEST_COLUMN_INTENT_DATA;
 
-    private static String NOTES_SNIPPET_SEARCH_QUERY = "SELECT " + NOTES_SEARCH_PROJECTION
+    /** Base search query – excludes trash and private notes. Private notes are appended
+     *  conditionally at runtime when the privacy space is unlocked. */
+    private static final String NOTES_SNIPPET_SEARCH_QUERY_BASE = "SELECT " + NOTES_SEARCH_PROJECTION
         + " FROM " + TABLE.NOTE
         + " WHERE " + NoteColumns.SNIPPET + " LIKE ?"
         + " AND " + NoteColumns.PARENT_ID + "<>" + Notes.ID_TRASH_FOLER
         + " AND " + NoteColumns.TYPE + "=" + Notes.TYPE_NOTE;
+
+    private static final String NOTES_SNIPPET_SEARCH_QUERY_LOCKED =
+            NOTES_SNIPPET_SEARCH_QUERY_BASE + " AND " + NoteColumns.IS_PRIVATE + "=0";
+
+    // Kept for source-level compatibility; actual value is chosen at query time.
+    private static String NOTES_SNIPPET_SEARCH_QUERY = NOTES_SNIPPET_SEARCH_QUERY_LOCKED;
 
     @Override
     public boolean onCreate() {
@@ -132,8 +140,13 @@ public class NotesProvider extends ContentProvider {
 
                 try {
                     searchString = String.format("%%%s%%", searchString);
-                    c = db.rawQuery(NOTES_SNIPPET_SEARCH_QUERY,
-                            new String[] { searchString });
+                    // Show private notes in search only when the privacy space is unlocked.
+                    boolean unlocked = net.micode.notes.ui.PrivacySpaceManager
+                            .getInstance(getContext()).isUnlocked();
+                    String searchQuery = unlocked
+                            ? NOTES_SNIPPET_SEARCH_QUERY_BASE
+                            : NOTES_SNIPPET_SEARCH_QUERY_LOCKED;
+                    c = db.rawQuery(searchQuery, new String[] { searchString });
                 } catch (IllegalStateException ex) {
                     Log.e(TAG, "got exception: " + ex.toString());
                 }

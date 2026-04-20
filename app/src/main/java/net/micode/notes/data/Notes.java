@@ -165,6 +165,12 @@ public class Notes {
          * <P> Type : INTEGER (long) </P>
          */
         public static final String VERSION = "version";
+
+        /**
+         * Whether this note belongs to the private space (1) or not (0)
+         * <P> Type : INTEGER </P>
+         */
+        public static final String IS_PRIVATE = "is_private";
     }
 
     public interface DataColumns {

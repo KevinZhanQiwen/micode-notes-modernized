@@ -113,6 +113,23 @@
             android:theme="@android:style/Theme.Holo.Light" >
         </activity>
 
+        <activity
+            android:name=".ui.PrivacySetupActivity"
+            android:label="@string/privacy_setup_title"
+            android:theme="@style/PrivacyTheme"
+            android:windowSoftInputMode="adjustPan" />
+
+        <activity
+            android:name=".ui.PrivacyLockActivity"
+            android:label="@string/privacy_space_title"
+            android:theme="@style/PrivacyTheme" />
+
+        <activity
+            android:name=".ui.PrivacySpaceActivity"
+            android:label="@string/privacy_space_title"
+            android:theme="@style/NoteTheme"
+            android:windowSoftInputMode="adjustPan" />
+
         <service
             android:name="net.micode.notes.gtask.remote.GTaskSyncService"
             android:exported="false" >

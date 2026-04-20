@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="@drawable/list_privacy_background">
+
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:orientation="vertical">
+
+        <!-- Empty state hint -->
+        <TextView
+            android:id="@+id/tv_empty_hint"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:text="@string/privacy_space_empty"
+            android:textColor="#FFAAAAAA"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:visibility="gone" />
+
+        <!-- Notes list -->
+        <ListView
+            android:id="@+id/private_notes_list"
+            android:layout_width="fill_parent"
+            android:layout_height="0dip"
+            android:layout_weight="1"
+            android:cacheColorHint="@null"
+            android:listSelector="@android:color/transparent"
+            android:divider="@null"
+            android:fadingEdge="@null" />
+
+    </LinearLayout>
+
+    <!-- Floating new note button -->
+    <Button
+        android:id="@+id/btn_new_private_note"
+        android:background="@drawable/new_note_privacy"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:focusable="false"
+        android:layout_gravity="bottom" />
+
+</FrameLayout>

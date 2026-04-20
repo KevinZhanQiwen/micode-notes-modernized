@@ -116,6 +116,32 @@
     <string name="preferences_toast_success_set_accout">%1$s has been set as the sync account</string>
     <string name="preferences_bg_random_appear_title">New note background color random</string>
 
+    <!-- Privacy Space -->
+    <string name="menu_privacy_space">Privacy Space</string>
+    <string name="privacy_space_title">Privacy Space</string>
+    <string name="privacy_space_empty">No private notes yet</string>
+    <string name="privacy_new_note">New Private Note</string>
+    <string name="privacy_setup_title">Set Up Privacy Space</string>
+    <string name="privacy_setup_subtitle">Choose how you want to lock your private notes</string>
+    <string name="privacy_setup_use_pattern">Use Pattern Lock</string>
+    <string name="privacy_setup_use_pin">Use 4-Digit PIN</string>
+    <string name="privacy_setup_draw_pattern">Draw a pattern</string>
+    <string name="privacy_setup_draw_pattern_again">Draw pattern again to confirm</string>
+    <string name="privacy_setup_enter_pin">Enter a 4-digit PIN</string>
+    <string name="privacy_setup_enter_pin_again">Enter PIN again to confirm</string>
+    <string name="privacy_setup_pattern_mismatch">Patterns don\'t match, please try again</string>
+    <string name="privacy_setup_pin_mismatch">PINs don\'t match, please try again</string>
+    <string name="privacy_setup_pattern_too_short">Pattern must connect at least 4 dots</string>
+    <string name="privacy_setup_success">Privacy Space set up successfully</string>
+    <string name="privacy_lock_draw_pattern">Draw your pattern</string>
+    <string name="privacy_lock_enter_pin">Enter your PIN</string>
+    <string name="privacy_lock_wrong_pattern">Wrong pattern, please try again</string>
+    <string name="privacy_lock_wrong_pin">Wrong PIN, please try again</string>
+    <string name="privacy_move_in">Move to Privacy Space</string>
+    <string name="privacy_move_out">Restore from Privacy Space</string>
+    <string name="privacy_move_in_done">Note moved to Privacy Space</string>
+    <string name="privacy_move_out_done">Note restored from Privacy Space</string>
+
     <string name="button_delete">Delete</string>
     <string name="call_record_folder_name">Call notes</string>
     <string name="hint_foler_name">Input name</string>

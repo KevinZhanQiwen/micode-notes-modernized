@@ -125,15 +125,19 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
 
     private NoteItemData mFocusNoteDataItem;
 
-    private static final String NORMAL_SELECTION = NoteColumns.PARENT_ID + "=?";
+    private static final String NORMAL_SELECTION =
+            NoteColumns.PARENT_ID + "=? AND " + NoteColumns.IS_PRIVATE + "=0";
 
     private static final String ROOT_FOLDER_SELECTION = "(" + NoteColumns.TYPE + "<>"
-            + Notes.TYPE_SYSTEM + " AND " + NoteColumns.PARENT_ID + "=?)" + " OR ("
+            + Notes.TYPE_SYSTEM + " AND " + NoteColumns.PARENT_ID + "=?"
+            + " AND " + NoteColumns.IS_PRIVATE + "=0)" + " OR ("
             + NoteColumns.ID + "=" + Notes.ID_CALL_RECORD_FOLDER + " AND "
             + NoteColumns.NOTES_COUNT + ">0)";
 
-    private final static int REQUEST_CODE_OPEN_NODE = 102;
-    private final static int REQUEST_CODE_NEW_NODE  = 103;
+    private final static int REQUEST_CODE_OPEN_NODE       = 102;
+    private final static int REQUEST_CODE_NEW_NODE        = 103;
+    private final static int REQUEST_CODE_PRIVACY_SETUP   = 104;
+    private final static int REQUEST_CODE_PRIVACY_UNLOCK  = 105;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -152,6 +156,12 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         if (resultCode == RESULT_OK
                 && (requestCode == REQUEST_CODE_OPEN_NODE || requestCode == REQUEST_CODE_NEW_NODE)) {
             mNotesListAdapter.changeCursor(null);
+        } else if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_PRIVACY_SETUP) {
+            // Setup completed – open the space right away
+            startActivity(new Intent(this, PrivacySpaceActivity.class));
+        } else if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_PRIVACY_UNLOCK) {
+            // Unlocked – open the space
+            startActivity(new Intent(this, PrivacySpaceActivity.class));
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
@@ -337,11 +347,25 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
                 builder.show();
             } else if (itemId == R.id.move) {
                 startQueryDestinationFolders();
+            } else if (itemId == R.id.move_to_privacy) {
+                moveSelectedToPrivacySpace();
             } else {
                 return false;
             }
             return true;
         }
+    }
+
+    private void moveSelectedToPrivacySpace() {
+        HashSet<Long> ids = mNotesListAdapter.getSelectedItemIds();
+        ContentValues values = new ContentValues();
+        values.put(NoteColumns.IS_PRIVATE, 1);
+        for (long id : ids) {
+            mContentResolver.update(Notes.CONTENT_NOTE_URI, values,
+                    NoteColumns.ID + "=?", new String[]{String.valueOf(id)});
+        }
+        Toast.makeText(this, R.string.privacy_move_in_done, Toast.LENGTH_SHORT).show();
+        mModeCallBack.finishActionMode();
     }
 
     private class NewNoteOnTouchListener implements OnTouchListener {
@@ -795,8 +819,23 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
             createNewNote();
         } else if (itemId == R.id.menu_search) {
             onSearchRequested();
+        } else if (itemId == R.id.menu_privacy_space) {
+            openPrivacySpace();
         }
         return true;
+    }
+
+    private void openPrivacySpace() {
+        PrivacySpaceManager manager = PrivacySpaceManager.getInstance(this);
+        if (!manager.isSetup()) {
+            startActivityForResult(new Intent(this, PrivacySetupActivity.class),
+                    REQUEST_CODE_PRIVACY_SETUP);
+        } else if (!manager.isUnlocked()) {
+            startActivityForResult(new Intent(this, PrivacyLockActivity.class),
+                    REQUEST_CODE_PRIVACY_UNLOCK);
+        } else {
+            startActivity(new Intent(this, PrivacySpaceActivity.class));
+        }
     }
 
     @Override
