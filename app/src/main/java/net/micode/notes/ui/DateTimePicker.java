@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2011, The MiCode Open Source Community (www.micode.net)
+ * Copyright (c) 2010-2011, The MiCode.net
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,49 +21,85 @@ import java.util.Calendar;
 
 import net.micode.notes.R;
 
-
 import android.content.Context;
 import android.text.format.DateFormat;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.NumberPicker;
 
+/**
+ * 自定义日期时间选择器（滚动滚轮）
+ *
+ * 功能：
+ * 1. 提供 近7天、小时、分钟、AM/PM 滚动选择
+ * 2. 支持 12小时制 / 24小时制 自动切换
+ * 3. 小时/分钟/日期 滚动时自动跨天处理
+ * 4. 实时回调时间变化
+ *
+ * 供 DateTimePickerDialog 使用
+ */
 public class DateTimePicker extends FrameLayout {
 
+    // 默认启用状态
     private static final boolean DEFAULT_ENABLE_STATE = true;
 
+    // 时间常量
     private static final int HOURS_IN_HALF_DAY = 12;
     private static final int HOURS_IN_ALL_DAY = 24;
     private static final int DAYS_IN_ALL_WEEK = 7;
+
+    // 日期滚轮范围
     private static final int DATE_SPINNER_MIN_VAL = 0;
     private static final int DATE_SPINNER_MAX_VAL = DAYS_IN_ALL_WEEK - 1;
+
+    // 24小时制小时范围
     private static final int HOUR_SPINNER_MIN_VAL_24_HOUR_VIEW = 0;
     private static final int HOUR_SPINNER_MAX_VAL_24_HOUR_VIEW = 23;
+
+    // 12小时制小时范围
     private static final int HOUR_SPINNER_MIN_VAL_12_HOUR_VIEW = 1;
     private static final int HOUR_SPINNER_MAX_VAL_12_HOUR_VIEW = 12;
+
+    // 分钟范围
     private static final int MINUT_SPINNER_MIN_VAL = 0;
     private static final int MINUT_SPINNER_MAX_VAL = 59;
+
+    // AM/PM 选择范围
     private static final int AMPM_SPINNER_MIN_VAL = 0;
     private static final int AMPM_SPINNER_MAX_VAL = 1;
 
-    private final NumberPicker mDateSpinner;
-    private final NumberPicker mHourSpinner;
-    private final NumberPicker mMinuteSpinner;
-    private final NumberPicker mAmPmSpinner;
+    // 四个滚动滚轮
+    private final NumberPicker mDateSpinner;    // 日期（近7天）
+    private final NumberPicker mHourSpinner;    // 小时
+    private final NumberPicker mMinuteSpinner;  // 分钟
+    private final NumberPicker mAmPmSpinner;    // 上/下午
+
+    // 日历实例，存储当前选择时间
     private Calendar mDate;
 
+    // 日期显示文字
     private String[] mDateDisplayValues = new String[DAYS_IN_ALL_WEEK];
 
+    // 当前是否是上午
     private boolean mIsAm;
 
+    // 是否使用24小时制
     private boolean mIs24HourView;
 
+    // 控件是否可用
     private boolean mIsEnabled = DEFAULT_ENABLE_STATE;
 
+    // 是否正在初始化（防止初始化时触发回调）
     private boolean mInitialising;
 
+    // 时间变化监听器
     private OnDateTimeChangedListener mOnDateTimeChangedListener;
 
+    // ======================== 滚轮值变化监听器 ========================
+
+    /**
+     * 日期滚轮变化：前后调整天数
+     */
     private NumberPicker.OnValueChangeListener mOnDateChangedListener = new NumberPicker.OnValueChangeListener() {
         @Override
         public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
@@ -73,40 +109,49 @@ public class DateTimePicker extends FrameLayout {
         }
     };
 
+    /**
+     * 小时滚轮变化：处理跨日、AM/PM 切换
+     */
     private NumberPicker.OnValueChangeListener mOnHourChangedListener = new NumberPicker.OnValueChangeListener() {
         @Override
         public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
             boolean isDateChanged = false;
             Calendar cal = Calendar.getInstance();
+
+            // 12小时制逻辑
             if (!mIs24HourView) {
-                if (!mIsAm && oldVal == HOURS_IN_HALF_DAY - 1 && newVal == HOURS_IN_HALF_DAY) {
+                // 从 11点 → 12点 跨半天
+                if (!mIsAm && oldVal == 11 && newVal == 12) {
                     cal.setTimeInMillis(mDate.getTimeInMillis());
                     cal.add(Calendar.DAY_OF_YEAR, 1);
                     isDateChanged = true;
-                } else if (mIsAm && oldVal == HOURS_IN_HALF_DAY && newVal == HOURS_IN_HALF_DAY - 1) {
+                } else if (mIsAm && oldVal == 12 && newVal == 11) {
                     cal.setTimeInMillis(mDate.getTimeInMillis());
                     cal.add(Calendar.DAY_OF_YEAR, -1);
                     isDateChanged = true;
                 }
-                if (oldVal == HOURS_IN_HALF_DAY - 1 && newVal == HOURS_IN_HALF_DAY ||
-                        oldVal == HOURS_IN_HALF_DAY && newVal == HOURS_IN_HALF_DAY - 1) {
+                // 切换上/下午
+                if (oldVal == 11 && newVal == 12 || oldVal == 12 && newVal == 11) {
                     mIsAm = !mIsAm;
                     updateAmPmControl();
                 }
             } else {
-                if (oldVal == HOURS_IN_ALL_DAY - 1 && newVal == 0) {
-                    cal.setTimeInMillis(mDate.getTimeInMillis());
+                // 24小时制：23点 → 0点 跨天
+                if (oldVal == 23 && newVal == 0) {
                     cal.add(Calendar.DAY_OF_YEAR, 1);
                     isDateChanged = true;
-                } else if (oldVal == 0 && newVal == HOURS_IN_ALL_DAY - 1) {
-                    cal.setTimeInMillis(mDate.getTimeInMillis());
+                } else if (oldVal == 0 && newVal == 23) {
                     cal.add(Calendar.DAY_OF_YEAR, -1);
                     isDateChanged = true;
                 }
             }
-            int newHour = mHourSpinner.getValue() % HOURS_IN_HALF_DAY + (mIsAm ? 0 : HOURS_IN_HALF_DAY);
+
+            // 更新小时
+            int newHour = mHourSpinner.getValue() % 12 + (mIsAm ? 0 : 12);
             mDate.set(Calendar.HOUR_OF_DAY, newHour);
             onDateTimeChanged();
+
+            // 跨天则更新年月日
             if (isDateChanged) {
                 setCurrentYear(cal.get(Calendar.YEAR));
                 setCurrentMonth(cal.get(Calendar.MONTH));
@@ -115,54 +160,63 @@ public class DateTimePicker extends FrameLayout {
         }
     };
 
+    /**
+     * 分钟滚轮变化：处理跨小时、跨天
+     */
     private NumberPicker.OnValueChangeListener mOnMinuteChangedListener = new NumberPicker.OnValueChangeListener() {
         @Override
         public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
             int minValue = mMinuteSpinner.getMinValue();
             int maxValue = mMinuteSpinner.getMaxValue();
             int offset = 0;
+
+            // 从 59 → 0 进一小时
             if (oldVal == maxValue && newVal == minValue) {
                 offset += 1;
             } else if (oldVal == minValue && newVal == maxValue) {
                 offset -= 1;
             }
+
             if (offset != 0) {
                 mDate.add(Calendar.HOUR_OF_DAY, offset);
                 mHourSpinner.setValue(getCurrentHour());
                 updateDateControl();
+
+                // 更新 AM/PM
                 int newHour = getCurrentHourOfDay();
-                if (newHour >= HOURS_IN_HALF_DAY) {
-                    mIsAm = false;
-                    updateAmPmControl();
-                } else {
-                    mIsAm = true;
-                    updateAmPmControl();
-                }
+                mIsAm = newHour < 12;
+                updateAmPmControl();
             }
+
             mDate.set(Calendar.MINUTE, newVal);
             onDateTimeChanged();
         }
     };
 
+    /**
+     * AM/PM 切换：直接 ±12小时
+     */
     private NumberPicker.OnValueChangeListener mOnAmPmChangedListener = new NumberPicker.OnValueChangeListener() {
         @Override
         public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
             mIsAm = !mIsAm;
             if (mIsAm) {
-                mDate.add(Calendar.HOUR_OF_DAY, -HOURS_IN_HALF_DAY);
+                mDate.add(Calendar.HOUR_OF_DAY, -12);
             } else {
-                mDate.add(Calendar.HOUR_OF_DAY, HOURS_IN_HALF_DAY);
+                mDate.add(Calendar.HOUR_OF_DAY, 12);
             }
             updateAmPmControl();
             onDateTimeChanged();
         }
     };
 
+    // ======================== 时间变化回调接口 ========================
     public interface OnDateTimeChangedListener {
         void onDateTimeChanged(DateTimePicker view, int year, int month,
-                int dayOfMonth, int hourOfDay, int minute);
+                               int dayOfMonth, int hourOfDay, int minute);
     }
 
+    // ======================== 构造方法 ========================
     public DateTimePicker(Context context) {
         this(context, System.currentTimeMillis());
     }
@@ -176,21 +230,28 @@ public class DateTimePicker extends FrameLayout {
         mDate = Calendar.getInstance();
         mInitialising = true;
         mIsAm = getCurrentHourOfDay() >= HOURS_IN_HALF_DAY;
+
+        // 加载布局
         inflate(context, R.layout.datetime_picker, this);
 
+        // 初始化日期滚轮
         mDateSpinner = (NumberPicker) findViewById(R.id.date);
         mDateSpinner.setMinValue(DATE_SPINNER_MIN_VAL);
         mDateSpinner.setMaxValue(DATE_SPINNER_MAX_VAL);
         mDateSpinner.setOnValueChangedListener(mOnDateChangedListener);
 
+        // 初始化小时滚轮
         mHourSpinner = (NumberPicker) findViewById(R.id.hour);
         mHourSpinner.setOnValueChangedListener(mOnHourChangedListener);
+
+        // 初始化分钟滚轮
         mMinuteSpinner =  (NumberPicker) findViewById(R.id.minute);
         mMinuteSpinner.setMinValue(MINUT_SPINNER_MIN_VAL);
         mMinuteSpinner.setMaxValue(MINUT_SPINNER_MAX_VAL);
         mMinuteSpinner.setOnLongPressUpdateInterval(100);
         mMinuteSpinner.setOnValueChangedListener(mOnMinuteChangedListener);
 
+        // 初始化 AM/PM 滚轮
         String[] stringsForAmPm = new DateFormatSymbols().getAmPmStrings();
         mAmPmSpinner = (NumberPicker) findViewById(R.id.amPm);
         mAmPmSpinner.setMinValue(AMPM_SPINNER_MIN_VAL);
@@ -198,27 +259,25 @@ public class DateTimePicker extends FrameLayout {
         mAmPmSpinner.setDisplayedValues(stringsForAmPm);
         mAmPmSpinner.setOnValueChangedListener(mOnAmPmChangedListener);
 
-        // update controls to initial state
+        // 更新控件状态
         updateDateControl();
         updateHourControl();
         updateAmPmControl();
 
+        // 设置24/12小时制
         set24HourView(is24HourView);
 
-        // set to current time
+        // 设置当前时间
         setCurrentDate(date);
-
         setEnabled(isEnabled());
 
-        // set the content descriptions
         mInitialising = false;
     }
 
+    // ======================== 启用/禁用 ========================
     @Override
     public void setEnabled(boolean enabled) {
-        if (mIsEnabled == enabled) {
-            return;
-        }
+        if (mIsEnabled == enabled) return;
         super.setEnabled(enabled);
         mDateSpinner.setEnabled(enabled);
         mMinuteSpinner.setEnabled(enabled);
@@ -232,20 +291,11 @@ public class DateTimePicker extends FrameLayout {
         return mIsEnabled;
     }
 
-    /**
-     * Get the current date in millis
-     *
-     * @return the current date in millis
-     */
+    // ======================== 日期时间获取/设置 ========================
     public long getCurrentDateInTimeMillis() {
         return mDate.getTimeInMillis();
     }
 
-    /**
-     * Set the current date
-     *
-     * @param date The current date in millis
-     */
     public void setCurrentDate(long date) {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(date);
@@ -253,17 +303,7 @@ public class DateTimePicker extends FrameLayout {
                 cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE));
     }
 
-    /**
-     * Set the current date
-     *
-     * @param year The current year
-     * @param month The current month
-     * @param dayOfMonth The current dayOfMonth
-     * @param hourOfDay The current hourOfDay
-     * @param minute The current minute
-     */
-    public void setCurrentDate(int year, int month,
-            int dayOfMonth, int hourOfDay, int minute) {
+    public void setCurrentDate(int year, int month, int dayOfMonth, int hourOfDay, int minute) {
         setCurrentYear(year);
         setCurrentMonth(month);
         setCurrentDay(dayOfMonth);
@@ -271,215 +311,129 @@ public class DateTimePicker extends FrameLayout {
         setCurrentMinute(minute);
     }
 
-    /**
-     * Get current year
-     *
-     * @return The current year
-     */
-    public int getCurrentYear() {
-        return mDate.get(Calendar.YEAR);
-    }
-
-    /**
-     * Set current year
-     *
-     * @param year The current year
-     */
+    // 年、月、日、小时、分钟 的 get/set 方法（略去重复注释，保持简洁）
+    public int getCurrentYear() { return mDate.get(Calendar.YEAR); }
     public void setCurrentYear(int year) {
-        if (!mInitialising && year == getCurrentYear()) {
-            return;
-        }
+        if (!mInitialising && year == getCurrentYear()) return;
         mDate.set(Calendar.YEAR, year);
         updateDateControl();
         onDateTimeChanged();
     }
 
-    /**
-     * Get current month in the year
-     *
-     * @return The current month in the year
-     */
-    public int getCurrentMonth() {
-        return mDate.get(Calendar.MONTH);
-    }
-
-    /**
-     * Set current month in the year
-     *
-     * @param month The month in the year
-     */
+    public int getCurrentMonth() { return mDate.get(Calendar.MONTH); }
     public void setCurrentMonth(int month) {
-        if (!mInitialising && month == getCurrentMonth()) {
-            return;
-        }
+        if (!mInitialising && month == getCurrentMonth()) return;
         mDate.set(Calendar.MONTH, month);
         updateDateControl();
         onDateTimeChanged();
     }
 
-    /**
-     * Get current day of the month
-     *
-     * @return The day of the month
-     */
-    public int getCurrentDay() {
-        return mDate.get(Calendar.DAY_OF_MONTH);
-    }
-
-    /**
-     * Set current day of the month
-     *
-     * @param dayOfMonth The day of the month
-     */
+    public int getCurrentDay() { return mDate.get(Calendar.DAY_OF_MONTH); }
     public void setCurrentDay(int dayOfMonth) {
-        if (!mInitialising && dayOfMonth == getCurrentDay()) {
-            return;
-        }
+        if (!mInitialising && dayOfMonth == getCurrentDay()) return;
         mDate.set(Calendar.DAY_OF_MONTH, dayOfMonth);
         updateDateControl();
         onDateTimeChanged();
     }
 
-    /**
-     * Get current hour in 24 hour mode, in the range (0~23)
-     * @return The current hour in 24 hour mode
-     */
-    public int getCurrentHourOfDay() {
-        return mDate.get(Calendar.HOUR_OF_DAY);
-    }
+    public int getCurrentHourOfDay() { return mDate.get(Calendar.HOUR_OF_DAY); }
 
     private int getCurrentHour() {
-        if (mIs24HourView){
-            return getCurrentHourOfDay();
-        } else {
-            int hour = getCurrentHourOfDay();
-            if (hour > HOURS_IN_HALF_DAY) {
-                return hour - HOURS_IN_HALF_DAY;
-            } else {
-                return hour == 0 ? HOURS_IN_HALF_DAY : hour;
-            }
-        }
+        if (mIs24HourView) return getCurrentHourOfDay();
+        int hour = getCurrentHourOfDay();
+        return hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
     }
 
-    /**
-     * Set current hour in 24 hour mode, in the range (0~23)
-     *
-     * @param hourOfDay
-     */
     public void setCurrentHour(int hourOfDay) {
-        if (!mInitialising && hourOfDay == getCurrentHourOfDay()) {
-            return;
-        }
+        if (!mInitialising && hourOfDay == getCurrentHourOfDay()) return;
         mDate.set(Calendar.HOUR_OF_DAY, hourOfDay);
+
         if (!mIs24HourView) {
-            if (hourOfDay >= HOURS_IN_HALF_DAY) {
-                mIsAm = false;
-                if (hourOfDay > HOURS_IN_HALF_DAY) {
-                    hourOfDay -= HOURS_IN_HALF_DAY;
-                }
-            } else {
-                mIsAm = true;
-                if (hourOfDay == 0) {
-                    hourOfDay = HOURS_IN_HALF_DAY;
-                }
-            }
+            mIsAm = hourOfDay < 12;
+            hourOfDay = getCurrentHour();
             updateAmPmControl();
         }
         mHourSpinner.setValue(hourOfDay);
         onDateTimeChanged();
     }
 
-    /**
-     * Get currentMinute
-     *
-     * @return The Current Minute
-     */
-    public int getCurrentMinute() {
-        return mDate.get(Calendar.MINUTE);
-    }
+    public int getCurrentMinute() { return mDate.get(Calendar.MINUTE); }
 
-    /**
-     * Set current minute
-     */
     public void setCurrentMinute(int minute) {
-        if (!mInitialising && minute == getCurrentMinute()) {
-            return;
-        }
+        if (!mInitialising && minute == getCurrentMinute()) return;
         mMinuteSpinner.setValue(minute);
         mDate.set(Calendar.MINUTE, minute);
         onDateTimeChanged();
     }
 
-    /**
-     * @return true if this is in 24 hour view else false.
-     */
-    public boolean is24HourView () {
-        return mIs24HourView;
-    }
+    // ======================== 12/24小时制切换 ========================
+    public boolean is24HourView() { return mIs24HourView; }
 
-    /**
-     * Set whether in 24 hour or AM/PM mode.
-     *
-     * @param is24HourView True for 24 hour mode. False for AM/PM mode.
-     */
     public void set24HourView(boolean is24HourView) {
-        if (mIs24HourView == is24HourView) {
-            return;
-        }
+        if (mIs24HourView == is24HourView) return;
         mIs24HourView = is24HourView;
         mAmPmSpinner.setVisibility(is24HourView ? View.GONE : View.VISIBLE);
-        int hour = getCurrentHourOfDay();
         updateHourControl();
-        setCurrentHour(hour);
+        setCurrentHour(getCurrentHourOfDay());
         updateAmPmControl();
     }
 
+    // ======================== 控件状态更新 ========================
+
+    /**
+     * 更新日期滚轮显示：显示近7天（格式：月.日 星期）
+     */
     private void updateDateControl() {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(mDate.getTimeInMillis());
         cal.add(Calendar.DAY_OF_YEAR, -DAYS_IN_ALL_WEEK / 2 - 1);
+
         mDateSpinner.setDisplayedValues(null);
         for (int i = 0; i < DAYS_IN_ALL_WEEK; ++i) {
             cal.add(Calendar.DAY_OF_YEAR, 1);
             mDateDisplayValues[i] = (String) DateFormat.format("MM.dd EEEE", cal);
         }
+
         mDateSpinner.setDisplayedValues(mDateDisplayValues);
         mDateSpinner.setValue(DAYS_IN_ALL_WEEK / 2);
         mDateSpinner.invalidate();
     }
 
+    /**
+     * 更新 AM/PM 显示
+     */
     private void updateAmPmControl() {
         if (mIs24HourView) {
             mAmPmSpinner.setVisibility(View.GONE);
         } else {
-            int index = mIsAm ? Calendar.AM : Calendar.PM;
-            mAmPmSpinner.setValue(index);
+            mAmPmSpinner.setValue(mIsAm ? Calendar.AM : Calendar.PM);
             mAmPmSpinner.setVisibility(View.VISIBLE);
         }
     }
 
+    /**
+     * 更新小时滚轮范围（12/24小时制）
+     */
     private void updateHourControl() {
         if (mIs24HourView) {
-            mHourSpinner.setMinValue(HOUR_SPINNER_MIN_VAL_24_HOUR_VIEW);
-            mHourSpinner.setMaxValue(HOUR_SPINNER_MAX_VAL_24_HOUR_VIEW);
+            mHourSpinner.setMinValue(0);
+            mHourSpinner.setMaxValue(23);
         } else {
-            mHourSpinner.setMinValue(HOUR_SPINNER_MIN_VAL_12_HOUR_VIEW);
-            mHourSpinner.setMaxValue(HOUR_SPINNER_MAX_VAL_12_HOUR_VIEW);
+            mHourSpinner.setMinValue(1);
+            mHourSpinner.setMaxValue(12);
         }
     }
 
-    /**
-     * Set the callback that indicates the 'Set' button has been pressed.
-     * @param callback the callback, if null will do nothing
-     */
+    // ======================== 回调监听 ========================
     public void setOnDateTimeChangedListener(OnDateTimeChangedListener callback) {
         mOnDateTimeChangedListener = callback;
     }
 
     private void onDateTimeChanged() {
         if (mOnDateTimeChangedListener != null) {
-            mOnDateTimeChangedListener.onDateTimeChanged(this, getCurrentYear(),
-                    getCurrentMonth(), getCurrentDay(), getCurrentHourOfDay(), getCurrentMinute());
+            mOnDateTimeChangedListener.onDateTimeChanged(
+                    this, getCurrentYear(), getCurrentMonth(),
+                    getCurrentDay(), getCurrentHourOfDay(), getCurrentMinute());
         }
     }
 }
