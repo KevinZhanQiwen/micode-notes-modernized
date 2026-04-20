@@ -145,6 +145,23 @@
     <string name="search">便签</string>
     <string name="datetime_dialog_ok">设置</string>
     <string name="datetime_dialog_cancel">取消</string>
+
+    <!-- 颜色筛选条 -->
+    <string name="color_filter_all">全部</string>
+
+    <!-- 更换列表背景 -->
+    <string name="menu_change_bg">更换列表背景</string>
+    <string name="bg_dialog_title">选择背景</string>
+    <string name="bg_default">默认背景</string>
+    <string name="bg_blue">浅蓝</string>
+    <string name="bg_green">浅绿</string>
+    <string name="bg_beige">米色</string>
+    <string name="bg_pink">浅粉</string>
+    <string name="bg_pick_image">从相册选择图片…</string>
+    <string name="bg_pick_failed">未找到可用的图片选择应用</string>
+    <string name="bg_apply_failed">应用背景图片失败</string>
+    <string name="bg_applied">背景已更新</string>
+
     <plurals name="search_results_title">
         <item quantity="other"><xliff:g id="NUMBER">%1$s</xliff:g> 条符合“<xliff:g id="SEARCH">%2$s</xliff:g>”的搜索结果</item>
     </plurals>

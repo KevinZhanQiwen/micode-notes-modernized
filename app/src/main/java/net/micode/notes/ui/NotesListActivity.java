@@ -35,8 +35,12 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.view.ActionMode;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -171,12 +175,23 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
     private final static int REQUEST_CODE_NEW_NODE        = 103;
     private final static int REQUEST_CODE_PRIVACY_SETUP   = 104;
     private final static int REQUEST_CODE_PRIVACY_UNLOCK  = 105;
+    private final static int REQUEST_CODE_PICK_BG_IMAGE   = 106;
+
+    // List background preferences
+    private static final String PREF_LIST_BG_TYPE  = "pref_list_bg_type";
+    private static final String PREF_LIST_BG_VALUE = "pref_list_bg_value";
+    private static final String BG_TYPE_DEFAULT = "default";
+    private static final String BG_TYPE_COLOR   = "color";
+    private static final String BG_TYPE_IMAGE   = "image";
+
+    private View mListRoot;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.note_list);
         initResources();
+        applyListBackground();
 
         /**
          * Insert an introduction when user firstly use this application
@@ -195,8 +210,38 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         } else if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_PRIVACY_UNLOCK) {
             // Unlocked – open the space
             startActivity(new Intent(this, PrivacySpaceActivity.class));
+        } else if (resultCode == RESULT_OK && requestCode == REQUEST_CODE_PICK_BG_IMAGE
+                && data != null && data.getData() != null) {
+            handlePickedBackgroundImage(data);
         } else {
             super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    private void handlePickedBackgroundImage(Intent data) {
+        Uri uri = data.getData();
+        // Try to acquire long-term permission for SAF URIs so the background
+        // survives reboots and process restarts.
+        try {
+            int flags = data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            if (flags == 0) {
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            }
+            getContentResolver().takePersistableUriPermission(uri, flags);
+        } catch (SecurityException ignored) {
+            // Some pickers (e.g. classic ACTION_PICK) don't grant persistable perms.
+        }
+
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putString(PREF_LIST_BG_TYPE, BG_TYPE_IMAGE)
+                .putString(PREF_LIST_BG_VALUE, uri.toString())
+                .apply();
+
+        if (applyListBackground()) {
+            Toast.makeText(this, R.string.bg_applied, Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, R.string.bg_apply_failed, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -256,6 +301,7 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
         mContentResolver = this.getContentResolver();
         mBackgroundQueryHandler = new BackgroundQueryHandler(this.getContentResolver());
         mCurrentFolderId = Notes.ID_ROOT_FOLDER;
+        mListRoot = findViewById(R.id.list_root);
         mNotesListView = (ListView) findViewById(R.id.notes_list);
         mNotesListView.addFooterView(LayoutInflater.from(this).inflate(R.layout.note_list_footer, null),
                 null, false);
@@ -1020,8 +1066,165 @@ public class NotesListActivity extends Activity implements OnClickListener, OnIt
             onSearchRequested();
         } else if (itemId == R.id.menu_privacy_space) {
             openPrivacySpace();
+        } else if (itemId == R.id.menu_change_bg) {
+            showChangeBackgroundDialog();
         }
         return true;
+    }
+
+    /**
+     * Shows a chooser that lets the user switch the notes list background.
+     * Options: default drawable, a few built-in solid colors, or an image
+     * picked from the gallery. The choice is persisted in SharedPreferences.
+     */
+    private void showChangeBackgroundDialog() {
+        final String[] items = new String[] {
+                getString(R.string.bg_default),
+                getString(R.string.bg_blue),
+                getString(R.string.bg_green),
+                getString(R.string.bg_beige),
+                getString(R.string.bg_pink),
+                getString(R.string.bg_pick_image),
+        };
+        // Index aligned with `items`; null entries are not color presets.
+        final String[] colorValues = {
+                null,
+                "#FFE3F2FD",
+                "#FFE8F5E9",
+                "#FFFFF8E1",
+                "#FFFCE4EC",
+                null,
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.bg_dialog_title)
+                .setItems(items, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which == 0) {
+                            PreferenceManager.getDefaultSharedPreferences(NotesListActivity.this)
+                                    .edit()
+                                    .putString(PREF_LIST_BG_TYPE, BG_TYPE_DEFAULT)
+                                    .remove(PREF_LIST_BG_VALUE)
+                                    .apply();
+                            applyListBackground();
+                            Toast.makeText(NotesListActivity.this, R.string.bg_applied,
+                                    Toast.LENGTH_SHORT).show();
+                        } else if (which == items.length - 1) {
+                            pickBackgroundImage();
+                        } else {
+                            PreferenceManager.getDefaultSharedPreferences(NotesListActivity.this)
+                                    .edit()
+                                    .putString(PREF_LIST_BG_TYPE, BG_TYPE_COLOR)
+                                    .putString(PREF_LIST_BG_VALUE, colorValues[which])
+                                    .apply();
+                            applyListBackground();
+                            Toast.makeText(NotesListActivity.this, R.string.bg_applied,
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void pickBackgroundImage() {
+        // ACTION_OPEN_DOCUMENT lets us request a persistable URI permission so
+        // the chosen wallpaper survives across launches.
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_CODE_PICK_BG_IMAGE);
+        } catch (Exception e) {
+            // Fall back to the legacy gallery picker if SAF isn't available.
+            try {
+                Intent fallback = new Intent(Intent.ACTION_PICK,
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(fallback, REQUEST_CODE_PICK_BG_IMAGE);
+            } catch (Exception ex) {
+                Toast.makeText(this, R.string.bg_pick_failed, Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    /**
+     * Applies the persisted background choice to the root view.
+     * Returns true on success, false if the saved value couldn't be applied
+     * (in which case we fall back to the default drawable).
+     */
+    private boolean applyListBackground() {
+        if (mListRoot == null) {
+            mListRoot = findViewById(R.id.list_root);
+        }
+        if (mListRoot == null) {
+            return false;
+        }
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        String type = sp.getString(PREF_LIST_BG_TYPE, BG_TYPE_DEFAULT);
+        String value = sp.getString(PREF_LIST_BG_VALUE, "");
+
+        try {
+            if (BG_TYPE_COLOR.equals(type) && !TextUtils.isEmpty(value)) {
+                mListRoot.setBackgroundColor(Color.parseColor(value));
+                return true;
+            }
+            if (BG_TYPE_IMAGE.equals(type) && !TextUtils.isEmpty(value)) {
+                Bitmap bmp = decodeScaledBitmap(Uri.parse(value));
+                if (bmp != null) {
+                    BitmapDrawable bd = new BitmapDrawable(getResources(), bmp);
+                    // CENTER_CROP-like behaviour: stretch to fill while keeping aspect.
+                    bd.setGravity(Gravity.FILL);
+                    mListRoot.setBackground(bd);
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "applyListBackground failed", e);
+        }
+        // Default / fallback path.
+        mListRoot.setBackgroundResource(R.drawable.list_background);
+        return BG_TYPE_DEFAULT.equals(type);
+    }
+
+    /**
+     * Decode the picked image with sub-sampling so we don't blow up memory on
+     * large photos (the list view can be reused as a giant wallpaper canvas).
+     */
+    private Bitmap decodeScaledBitmap(Uri uri) {
+        InputStream in = null;
+        InputStream in2 = null;
+        try {
+            // First pass: bounds only
+            in = getContentResolver().openInputStream(uri);
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(in, null, bounds);
+            if (in != null) in.close();
+
+            int targetW = getResources().getDisplayMetrics().widthPixels;
+            int targetH = getResources().getDisplayMetrics().heightPixels;
+            int sample = 1;
+            while ((bounds.outWidth / sample) > targetW * 2
+                    && (bounds.outHeight / sample) > targetH * 2) {
+                sample *= 2;
+            }
+
+            // Second pass: actual decode
+            in2 = getContentResolver().openInputStream(uri);
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = sample;
+            opts.inPreferredConfig = Bitmap.Config.RGB_565;
+            return BitmapFactory.decodeStream(in2, null, opts);
+        } catch (Exception e) {
+            Log.e(TAG, "decodeScaledBitmap failed: " + e.getMessage());
+            return null;
+        } finally {
+            try { if (in != null) in.close(); } catch (IOException ignored) {}
+            try { if (in2 != null) in2.close(); } catch (IOException ignored) {}
+        }
     }
 
     private void openPrivacySpace() {
